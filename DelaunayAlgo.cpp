@@ -15,6 +15,17 @@ Point Vertex::asPoint() { return Point{ x,y }; }
 
 void Vertex::printCoords() { std::cout << x << '\t' << y << '\n'; }
 
+void Vertex::assignEdge(HalfEdge* halfedge) { incident = halfedge; }
+
+HalfEdge* Vertex::leftBoundaryEdge(HalfEdge* halfedge)
+{
+	HalfEdge* boundaryedge = halfedge;
+	if (!boundaryedge->isBoundary()) {
+		boundaryedge = boundaryedge->getPrev()->getTwin();
+	}
+	return boundaryedge;
+}
+
 
 
 HalfEdge::HalfEdge(Vertex* originPt) {
@@ -35,18 +46,18 @@ HalfEdge* HalfEdge::getPrev() { return this->Prev; }
 
 HalfEdge* HalfEdge::getTwin() { return Twin; };
 
-bool HalfEdge::isBoundary() { return (getTwin()->Triangle == nullptr); }
+bool HalfEdge::isBoundary() { return (Triangle == nullptr); }
 
 void HalfEdge::printOrigin() { Origin->printCoords(); };
 
 void HalfEdge::changeorigin(Vertex* vertex) { Origin = vertex; };
 
-void HalfEdge::connectPrevNext(HalfEdge* prev, HalfEdge* next) {
+void HalfEdge::assignPrevNext(HalfEdge* prev, HalfEdge* next) {
 	this->Prev = prev;
 	this->Next = next;
 }
 
-void HalfEdge::connectTwin(HalfEdge* halfEdge) { this->Twin = halfEdge; }
+void HalfEdge::assignTwin(HalfEdge* halfEdge) { this->Twin = halfEdge; }
 
 void HalfEdge::assingFace(Face* face) { this->Triangle = face; }
 
@@ -90,10 +101,11 @@ bool Face::contains(Vertex vertex) {
 Canvas::Canvas(std::vector<Point> boundary) {
 	boundaryVect = boundary;
 	std::tuple<Point, Point, Point> trianglePoints = boundingTrianglePoints(boundary);
-	makeInitialTriangle(trianglePoints);
+	makeEnclosingTriangle(trianglePoints);
+	//populateCanvas();
 }
 
-Face* Canvas::findFace(Vertex vertex) {
+Face* Canvas::findFace(Vertex vertex) {					// rozmyslet si, co se stane, pokud nenajdu trojuhelnik - treba bod lezi na hranici
 	for (auto face : faceVect) {
 		if ((*face).contains(vertex)) {
 			return face;
@@ -106,13 +118,13 @@ std::tuple<HalfEdge*, HalfEdge*> Canvas::makeTwins(Vertex* left, Vertex* right) 
 	HalfEdge* lr = new HalfEdge{ left };
 	HalfEdge* rl = new HalfEdge{ right };
 
-	lr->connectTwin(rl);
-	rl->connectTwin(lr);
+	lr->assignTwin(rl);
+	rl->assignTwin(lr);
 
 	return std::make_tuple(lr, rl);
 }
 
-void Canvas::makeInitialTriangle(std::tuple<Point, Point, Point> trianglePoints) {
+void Canvas::makeEnclosingTriangle(std::tuple<Point, Point, Point> trianglePoints) {
 	Vertex* a = new Vertex{ std::get<0>(trianglePoints) };
 	Vertex* b = new Vertex{ std::get<1>(trianglePoints) };
 	Vertex* c = new Vertex{ std::get<2>(trianglePoints) };
@@ -122,16 +134,23 @@ void Canvas::makeInitialTriangle(std::tuple<Point, Point, Point> trianglePoints)
 	auto&& [ac, ca] = makeTwins(a, c);
 	auto&& [bc, cb] = makeTwins(b, c);
 
-	ab->connectPrevNext(ca, bc);
-	ba->connectPrevNext(cb, ac);
+	ab->assignPrevNext(ca, bc);
+	ba->assignPrevNext(cb, ac);
 
-	ac->connectPrevNext(ba, cb);
-	ca->connectPrevNext(bc, ab);
+	ac->assignPrevNext(ba, cb);
+	ca->assignPrevNext(bc, ab);
 
-	bc->connectPrevNext(ab, ca);
-	cb->connectPrevNext(ac, ba);
+	bc->assignPrevNext(ab, ca);
+	cb->assignPrevNext(ac, ba);
 
 	Face* innerFace = new Face{ ab };
+	ab->assingFace(innerFace);
+	bc->assingFace(innerFace);
+	ca->assingFace(innerFace);
+
+	a->assignEdge(ac);
+	b->assignEdge(ba);
+	c->assignEdge(cb);
 
 	this->verticesVect.assign({ a,b,c });
 	this->edgesVect.assign({ ab,ba, ac, ca, bc, cb });
@@ -139,7 +158,7 @@ void Canvas::makeInitialTriangle(std::tuple<Point, Point, Point> trianglePoints)
 }
 
 void Canvas::swapNecessary(HalfEdge* swapEdge) {
-	if (swapEdge->isBoundary()) return;
+	if (swapEdge->getTwin()->isBoundary()) return;
 
 	Vertex* a = swapEdge->getOrigin();
 	Vertex* b = swapEdge->getTarget();
@@ -172,28 +191,28 @@ void Canvas::insertInFace(Point point) {
 
 
 	Vertex* a = ab->getOrigin();
-	Vertex* b = ab->getTarget();
-	Vertex* c = ab->getNext()->getTarget();
+	Vertex* b = next->getOrigin();
+	Vertex* c = prev->getOrigin();
 
 	const auto& [ax, xa] = makeTwins(a, vertex);
 	const auto& [bx, xb] = makeTwins(b, vertex);
 	const auto& [cx, xc] = makeTwins(c, vertex);
 
-
+	vertex->assignEdge(xa);
 	edgesVect.insert(edgesVect.end(), { ax,xa,bx,xb,cx,xc });
 
-	ab->connectPrevNext(xa, bx);
-	next->connectPrevNext(xb, cx);
-	prev->connectPrevNext(xc, ax);
+	ab->assignPrevNext(xa, bx);
+	next->assignPrevNext(xb, cx);
+	prev->assignPrevNext(xc, ax);
 
-	ax->connectPrevNext(prev, xc);
-	xa->connectPrevNext(ax, prev);
+	ax->assignPrevNext(prev, xc);
+	xa->assignPrevNext(ax, prev);
 
-	bx->connectPrevNext(ab, xa);
-	xb->connectPrevNext(cx, next);
+	bx->assignPrevNext(ab, xa);
+	xb->assignPrevNext(cx, next);
 
-	cx->connectPrevNext(next, xb);
-	xc->connectPrevNext(ax, prev);
+	cx->assignPrevNext(next, xb);
+	xc->assignPrevNext(ax, prev);
 
 	Face* abx = new Face{ ab };
 	Face* bcx = new Face{ next };
@@ -201,8 +220,20 @@ void Canvas::insertInFace(Point point) {
 
 	faceVect.insert(faceVect.end(), { abx,bcx,cax });
 
-	deleteFace(oldTriangle);
+	ab->assingFace(abx);
+	xa->assingFace(abx);
+	bx->assingFace(abx);
 
+	next->assingFace(bcx);
+	xb->assingFace(bcx);
+	cx->assingFace(bcx);
+
+	prev->assingFace(cax);
+	xc->assingFace(cax);
+	ax->assingFace(cax);
+
+
+	deleteFace(oldTriangle);
 	swapNecessary(ab);
 	swapNecessary(next);
 	swapNecessary(prev);
@@ -219,28 +250,36 @@ void Canvas::deleteFace(Face* face) {
 }
 
 void Canvas::flipEdge(HalfEdge* edgeToSwap) {
-	HalfEdge* ac = edgeToSwap;
+	HalfEdge* ab = edgeToSwap;
+	HalfEdge* ba = ab->getTwin();
+
+	HalfEdge* ac = ba->getNext();
 	HalfEdge* ca = ac->getTwin();
 
-	HalfEdge* ab = ca->getNext();
-	HalfEdge* bc = ab->getNext();
-	HalfEdge* cb = ab->getTwin();
-	HalfEdge* cd = ac->getNext();
-	HalfEdge* da = cd->getNext();
-	HalfEdge* ad = cd->getTwin();
+	/*HalfEdge* cb = ba->getPrev();
+	HalfEdge* bc = cb->getTwin();*/
 
-	Vertex* b = bc->getOrigin();
-	Vertex* d = da->getOrigin();
+	HalfEdge* bd = ab->getNext();
+	HalfEdge* db = bd->getTwin();
 
-	ca->changeorigin(d);
-	ac->changeorigin(b);
+	/*HalfEdge* da = ab->getPrev();
+	HalfEdge* ad = da->getTwin();*/
 
-	bc->connectTwin(da);
-	da->connectTwin(bc);
+	ac->changeorigin(db->getOrigin());
+	bd->changeorigin(ca->getOrigin());
 
-	ca->connectTwin(ad);
-	ad->connectTwin(ca);
+	ac->assignTwin(bd);
+	bd->assignTwin(ac);
 
-	ac->connectTwin(cb);
-	cb->connectTwin(ac);
+	ab->assignTwin(ca);
+	ca->assignTwin(ab);
+	ba->assignTwin(db);
+	db->assignTwin(ba);
 }
+
+//void Canvas::populateCanvas() {
+//	for (auto& elem : boundaryVect) {
+//		insertInFace(elem);
+//	}
+//}
+

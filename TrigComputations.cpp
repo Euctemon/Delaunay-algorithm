@@ -1,6 +1,9 @@
 #include<cstdlib>
 #include<tuple>
 #include<vector>
+#include<algorithm>
+#include<iostream>
+
 #include "TrigComputations.h"
 
 int orientedTriangle(Point a, Point b, Point c) {
@@ -45,8 +48,28 @@ bool inCircle(Point a, Point b, Point c, Point d) {
 }
 
 std::tuple<Point, Point, Point> boundingTrianglePoints(std::vector<Point>& boundaryPoints) {
-	Point a = { -40.0,-10.0 };
-	Point b = { 40.0,-10.0 };
-	Point c = { 0.0,50.0 };
+	Point a{};
+	Point b{};
+	Point c{};
+	
+	const auto& [xMinIter, xMaxIter] = std::minmax_element(boundaryPoints.begin(), boundaryPoints.end(), [](Point const& a, Point const& b) {return a.x < b.x; });
+	const auto& [yMinIter, yMaxIter] = std::minmax_element(boundaryPoints.begin(), boundaryPoints.end(), [](Point const& a, Point const& b) {return a.y < b.y; });
+	
+	double xMin = xMinIter->x - 1.0;
+	double xMax = xMaxIter->x + 1.0;
+	double yMin = yMinIter->y - 1.0;
+	double yMax = yMaxIter->y + 1.0;
+	
+	if (xMax - xMin > yMax - yMin) {
+		a = { xMin, 2.0 * yMin - yMax };
+		b = { 2.0 * xMax, 0.5 * (yMax + yMin) };
+		c = { xMin, 2.0 * yMax - yMin };
+	}
+	else {
+		a = { 2.0 * xMin - xMax,yMin };
+		b = { 2.0 * xMax - xMin,yMin };
+		c = { 0.5 * (xMax + xMin),2.0 * yMax };
+	}
+
 	return std::make_tuple(a, b, c);
 }

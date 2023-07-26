@@ -17,6 +17,10 @@ public:
 	Point asPoint();
 
 	void printCoords();
+
+	void assignEdge(HalfEdge* halfedge);
+	
+	HalfEdge* leftBoundaryEdge(HalfEdge* halfedge);
 };
 
 class HalfEdge {
@@ -41,9 +45,8 @@ public:
 	void printOrigin();
 	void changeorigin(Vertex* vertex);
 
-	void connectPrevNext(HalfEdge* prev, HalfEdge* next);
-	void connectTwin(HalfEdge* twin);
-
+	void assignPrevNext(HalfEdge* prev, HalfEdge* next);
+	void assignTwin(HalfEdge* twin);
 	void assingFace(Face* triangle);
 };
 
@@ -75,7 +78,7 @@ public:
 
 	std::tuple<HalfEdge*, HalfEdge*> makeTwins(Vertex* left, Vertex* right);
 
-	void makeInitialTriangle(std::tuple<Point, Point, Point> trianglePoints);
+	void makeEnclosingTriangle(std::tuple<Point, Point, Point> trianglePoints);
 	void swapNecessary(HalfEdge* swapEdge);
 
 	void printFaces();
@@ -83,4 +86,6 @@ public:
 	void deleteFace(Face* face);
 
 	void flipEdge(HalfEdge* edgeToSwap);
+
+	void populateCanvas();
 };
