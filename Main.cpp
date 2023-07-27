@@ -7,25 +7,13 @@ int main() {
 	Point a{ 18.0,0.0 };
 	Point b{ 0.0,-10.0 };
 	Point c{ 0.0,12.0 };
-	Point d{ 0.0,6.0 };
+	Point d{ 1.0,3.0 };
+	Point e{ -5.0,2.0 };
+	Point f{ -14.0,5.0 };
 	
-	std::vector<Point> points = { a,b,c,d };
+	std::vector<Point> points = { a,b,c,d,e};
 
 	Canvas canvas(points);
-
-	canvas.printFaces();
-	std::cout << "\n -------------- \n";
-	canvas.insertInFace(a);
-	canvas.printFaces();
-	std::cout << "\n -------------- \n";
-	canvas.insertInFace(b);
-	canvas.printFaces();
-	std::cout << "\n -------------- \n";
-	canvas.insertInFace(c);
-	canvas.printFaces();
-	std::cout << "\n -------------- \n";
-	canvas.insertInFace(d);
-	canvas.printFaces();
 	
 
 
