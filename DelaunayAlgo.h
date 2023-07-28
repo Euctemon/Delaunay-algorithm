@@ -16,13 +16,13 @@ public:
 
 	Point asPoint();
 
-	void printCoords();
-
-	void assignEdge(HalfEdge* halfedge);
+	HalfEdge* getEdge();
 
 	HalfEdge* getLeftmostEdge();
 
-	HalfEdge* getEdge();
+	void printCoords();
+
+	void assignEdge(HalfEdge* halfedge);
 };
 
 class HalfEdge {
@@ -99,6 +99,12 @@ public:
 
 	void populateCanvas();
 
-	void deleteTriangleVertex(Vertex* vertex);
+	void removeTriangleVertex(Vertex* vertex);
 	void removeEnclosingTrinagle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices);
+
+	bool areNeighbours(Point first, Point second);
+
+	HalfEdge* findStartingEdge();
+
+	void removeAdditionalEdges();
 };

@@ -113,6 +113,7 @@ Canvas::Canvas(std::vector<Point> boundary) {
 	makeEnclosingTriangle(trianglePoints);
 	populateCanvas();
 	removeEnclosingTrinagle(trianglePoints);
+	removeAdditionalEdges();
 }
 
 Face* Canvas::findFace(Vertex vertex) {					// rozmyslet si, co se stane, pokud nenajdu trojuhelnik - treba bod lezi na hranici
@@ -250,13 +251,9 @@ void Canvas::insertInFace(Point point) {
 }
 
 void Canvas::deleteFace(Face* face) {
-	for (auto elemIt = faceVect.begin(); elemIt < faceVect.end(); elemIt++) {
-		if (*elemIt == face) {
-			delete* elemIt;
-			faceVect.erase(elemIt);
-			break;
-		}
-	}
+	auto faceIt = std::find(faceVect.begin(), faceVect.end(), face);
+	delete* faceIt;
+	faceVect.erase(faceIt);
 }
 
 void Canvas::flipEdge(HalfEdge* edgeToSwap) {
@@ -321,34 +318,23 @@ void Canvas::reconnectVertex(Vertex* vertex) {
 void Canvas::deleteEdge(HalfEdge* halfedge) {
 	HalfEdge* twin = halfedge->getTwin();
 
-	for (auto elemIt = edgesVect.begin(); elemIt < edgesVect.end(); elemIt++) {
-		if (*elemIt == halfedge) {
-			delete* elemIt;
-			edgesVect.erase(elemIt);
-			break;
-		}
-	}
-	for (auto elemIt = edgesVect.begin(); elemIt < edgesVect.end(); elemIt++) {
-		if (*elemIt == twin) {
-			delete* elemIt;
-			edgesVect.erase(elemIt);
-			break;
-		}
-	}
+	auto edgeIt = std::find(edgesVect.begin(), edgesVect.end(), halfedge);
+	delete* edgeIt;
+	edgesVect.erase(edgeIt);
+
+	auto twinIt = std::find(edgesVect.begin(), edgesVect.end(), twin);
+	delete* twinIt;
+	edgesVect.erase(twinIt);
 }
 
 void Canvas::deleteVertex(Vertex* vertex) {
-	for (auto elemIt = verticesVect.begin(); elemIt < verticesVect.end(); elemIt++) {
-		if (*elemIt == vertex) {
-			delete* elemIt;
-			verticesVect.erase(elemIt);
-			break;
-		}
-	}
+	auto vertIt = std::find(verticesVect.begin(), verticesVect.end(), vertex);
+	delete* vertIt;
+	verticesVect.erase(vertIt);
 }
 
 
-void Canvas::deleteTriangleVertex(Vertex* vertex) {
+void Canvas::removeTriangleVertex(Vertex* vertex) {
 	reconnectVertex(vertex);
 	vertex->assignEdge(vertex->getLeftmostEdge());
 
@@ -395,10 +381,64 @@ void Canvas::deleteTriangleVertex(Vertex* vertex) {
 	deleteVertex(vertex);
 }
 
-void Canvas::removeEnclosingTrinagle(std::tuple<Vertex*,Vertex*,Vertex*> triangleVertices) {
-	const auto& [a, b, c] = triangleVertices;
-	deleteTriangleVertex(a);
-	deleteTriangleVertex(c);
-	deleteTriangleVertex(b);
+
+bool Canvas::areNeighbours(Point first, Point second)
+{
+	auto firstIt = std::find(boundaryVect.begin(), boundaryVect.end(), first);
+	if (std::next(firstIt) == boundaryVect.end()) return (boundaryVect.front() == second);
+	else return (*std::next(firstIt) == second);
 }
 
+void Canvas::removeEnclosingTrinagle(std::tuple<Vertex*,Vertex*,Vertex*> triangleVertices) {
+	const auto& [a, b, c] = triangleVertices;
+	removeTriangleVertex(a);
+	removeTriangleVertex(c);
+	removeTriangleVertex(b);
+}
+
+HalfEdge* Canvas::findStartingEdge() {
+	Vertex* prev{ nullptr };
+	Vertex* next{ nullptr };
+	HalfEdge* halfedge{ nullptr };
+
+	for (auto& elem : edgesVect) {
+		prev = elem->getOrigin();
+		next = elem->getTarget();
+		if (elem->isBoundary() && areNeighbours(prev->asPoint(), next->asPoint())) {
+			halfedge = elem;
+			break;
+		}
+	}
+	return halfedge;
+}
+
+void Canvas::removeAdditionalEdges() {
+	Vertex* startingVertex{ nullptr };
+	Vertex* currentVertex{ nullptr };
+	HalfEdge* oppositeEdge{ nullptr };
+	HalfEdge* currentEdge{ nullptr };
+	Face* face{ nullptr };
+
+	currentEdge = findStartingEdge();
+	startingVertex = currentEdge->getOrigin();
+	currentVertex = currentEdge->getTarget();
+
+	
+	while (currentVertex != startingVertex) {
+		currentVertex->assignEdge(currentEdge->getTwin());
+
+		while (!areNeighbours(currentVertex->asPoint(), currentVertex->getLeftmostEdge()->getTarget()->asPoint())) {
+			oppositeEdge = currentVertex->getLeftmostEdge()->getTwin()->getPrev();
+			deleteEdge(currentVertex->getLeftmostEdge());
+			deleteFace(oppositeEdge->getFace());
+
+			oppositeEdge->getPrev()->assingFace(nullptr);
+			oppositeEdge->assingFace(nullptr);
+		}
+
+		currentEdge = currentVertex->getLeftmostEdge();
+		currentEdge->assignPrevNext(nullptr, nullptr);
+		currentVertex = currentVertex->getLeftmostEdge()->getTarget();
+	}
+	currentVertex->assignEdge(currentEdge->getTwin());
+}

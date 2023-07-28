@@ -5,6 +5,8 @@
 struct Point {
 	double x;
 	double y;
+
+	bool operator==(const Point& other) const = default;
 };
 
 int orientedTriangle(Point a, Point b, Point c);
