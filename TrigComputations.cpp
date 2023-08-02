@@ -32,11 +32,17 @@ bool inCircSegment(Point a, Point b, Point c, Point d) {
 	else return false;
 }
 
-bool inTriangle(Point a, Point b, Point c, Point d) {
+pointPos inTriangle(Point a, Point b, Point c, Point d) {
 	int sum = orientedTriangle(a, b, d) + orientedTriangle(b, c, d) + orientedTriangle(c, a, d);
 
-	if (sum == 3) return true;
-	else return false;
+	switch (sum) {
+	case 2:
+		return BOUNDARY;		// on triangle's edge
+	case 3:
+		return INSIDE;		// in triangle
+	default:
+		return OUTSIDE;		// outside triangle
+	}
 }
 
 bool inCircle(Point a, Point b, Point c, Point d) {
@@ -51,15 +57,15 @@ std::tuple<Point, Point, Point> boundingTrianglePoints(std::vector<Point>& bound
 	Point a{};
 	Point b{};
 	Point c{};
-	
+
 	const auto& [xMinIter, xMaxIter] = std::minmax_element(boundaryPoints.begin(), boundaryPoints.end(), [](Point const& a, Point const& b) {return a.x < b.x; });
 	const auto& [yMinIter, yMaxIter] = std::minmax_element(boundaryPoints.begin(), boundaryPoints.end(), [](Point const& a, Point const& b) {return a.y < b.y; });
-	
+
 	double xMin = xMinIter->x - 1.0;
 	double xMax = xMaxIter->x + 1.0;
 	double yMin = yMinIter->y - 1.0;
 	double yMax = yMaxIter->y + 1.0;
-	
+
 	if (xMax - xMin > yMax - yMin) {
 		a = { xMin, 2.0 * yMin - yMax };
 		b = { 2.0 * xMax, 0.5 * (yMax + yMin) };

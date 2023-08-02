@@ -1,5 +1,7 @@
 #pragma once
 
+#include<optional>
+#include<variant>
 #include<vector>
 #include "TrigComputations.h"
 
@@ -58,14 +60,18 @@ class Face {					// any halfedge to the left of the face
 	HalfEdge* boundary;
 
 public:
+
 	Face(HalfEdge* boundary);
 
 	HalfEdge* getEdge();
 
 	std::tuple<Vertex, Vertex, Vertex> getVertices();
+
+	HalfEdge* findEdgeToInsert(Point point);
+
 	void printVertices();
 
-	bool contains(Vertex vertex);
+	std::optional<std::variant<Face*, HalfEdge*>> contains(Point point);
 };
 
 class Canvas {
@@ -77,8 +83,6 @@ class Canvas {
 public:
 	Canvas(std::vector<Point> boundary);
 
-	Face* findFace(Vertex x);
-
 	std::tuple<Vertex*, Vertex*, Vertex*> pointsToVertices(std::tuple<Point, Point, Point> trianglePoints);
 
 	std::tuple<HalfEdge*, HalfEdge*> makeTwins(Vertex* left, Vertex* right);
@@ -89,7 +93,10 @@ public:
 	void printFaces();
 	void printFacesByEdges();
 
-	void insertInFace(Point a);
+	void insertPoint(Point point, bool includeEdges);
+	void insertInFace(Face* face, Point point);
+	void insertInEdge(HalfEdge* halfedge, Point point);
+
 	void deleteFace(Face* face);
 	void deleteEdge(HalfEdge* halfedge);
 	void deleteVertex(Vertex* vertex);

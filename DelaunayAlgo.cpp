@@ -1,9 +1,16 @@
 #include<tuple>
 #include<iostream>
 #include<algorithm>
+#include<variant>
+#include<optional>
 
 #include "TrigComputations.h"
 #include "DelaunayAlgo.h"
+
+// magic
+template<typename ... Ts>
+struct Overload : Ts ... { using Ts::operator() ...; };
+// end of magic
 
 
 Vertex::Vertex(Point& point) {
@@ -46,7 +53,7 @@ HalfEdge* HalfEdge::getPrev() { return this->Prev; }
 
 HalfEdge* HalfEdge::getTwin() { return Twin; }
 
-Face* HalfEdge::getFace() { return Triangle;}
+Face* HalfEdge::getFace() { return Triangle; }
 
 bool HalfEdge::isBoundary() { return (Triangle == nullptr); }
 
@@ -89,22 +96,55 @@ void Face::printVertices() {
 		boundary->getNext()->printOrigin();
 		boundary->getPrev()->printOrigin();
 	}
-	else std::cout << "not found";
+	else std::cout << "outer triangle";
 }
 
-bool Face::contains(Vertex vertex) {
+void Canvas::insertPoint(Point point, bool includeEdges) {
+	Face* face{ nullptr };
+	HalfEdge* halfedge{ nullptr };
+
+	auto f = [this, point](Face* face) {insertInFace(face, point); };
+	auto g = [this, point, includeEdges](HalfEdge* halfedge) {if (includeEdges) insertInEdge(halfedge, point); };
+
+	for (auto elem : faceVect) {
+		if (auto foo = elem->contains(point)) {
+			std::visit(Overload{ f,g }, foo.value());
+			break;
+		}
+	}
+}
+
+std::optional<std::variant<Face*, HalfEdge*>> Face::contains(Point point) {
 	auto&& [a, b, c] = this->getVertices();
+	pointPos position = inTriangle(a.asPoint(), b.asPoint(), c.asPoint(), point);
 
-	return inTriangle(a.asPoint(), b.asPoint(), c.asPoint(), vertex.asPoint());
+	switch (position) {
+	case INSIDE:
+		return this;
+	case BOUNDARY:
+		return findEdgeToInsert(point);
+	case OUTSIDE:
+		return {};
+	}
+}
+
+HalfEdge* Face::findEdgeToInsert(Point point) {
+	HalfEdge* ab = this->getEdge();
+	HalfEdge* bc = ab->getNext();
+	HalfEdge* ca = ab->getPrev();
+
+	if (orientedTriangle(ab->getOrigin()->asPoint(), ab->getTarget()->asPoint(), point) == 0) return ab;
+	if (orientedTriangle(bc->getOrigin()->asPoint(), bc->getTarget()->asPoint(), point) == 0) return bc;
+	else return ca;
 }
 
 
- std::tuple<Vertex*, Vertex*, Vertex*> Canvas::pointsToVertices(std::tuple<Point, Point, Point> trianglePoints) {
-	 Vertex* a = new Vertex{ std::get<0>(trianglePoints) };
-	 Vertex* b = new Vertex{ std::get<1>(trianglePoints) };
-	 Vertex* c = new Vertex{ std::get<2>(trianglePoints) };
+std::tuple<Vertex*, Vertex*, Vertex*> Canvas::pointsToVertices(std::tuple<Point, Point, Point> trianglePoints) {
+	Vertex* a = new Vertex{ std::get<0>(trianglePoints) };
+	Vertex* b = new Vertex{ std::get<1>(trianglePoints) };
+	Vertex* c = new Vertex{ std::get<2>(trianglePoints) };
 
-	 return std::make_tuple(a, b, c);
+	return std::make_tuple(a, b, c);
 }
 
 Canvas::Canvas(std::vector<Point> boundary) {
@@ -113,16 +153,7 @@ Canvas::Canvas(std::vector<Point> boundary) {
 	makeEnclosingTriangle(trianglePoints);
 	populateCanvas();
 	removeEnclosingTrinagle(trianglePoints);
-	removeAdditionalEdges();
-}
-
-Face* Canvas::findFace(Vertex vertex) {					// rozmyslet si, co se stane, pokud nenajdu trojuhelnik - treba bod lezi na hranici
-	for (auto face : faceVect) {
-		if ((*face).contains(vertex)) {
-			return face;
-		}
-	}
-	return nullptr;
+	//removeAdditionalEdges();
 }
 
 std::tuple<HalfEdge*, HalfEdge*> Canvas::makeTwins(Vertex* left, Vertex* right) {
@@ -193,11 +224,10 @@ void Canvas::printFaces() {
 	}
 }
 
-void Canvas::insertInFace(Point point) {
+void Canvas::insertInFace(Face* face, Point point) {
 	Vertex* vertex = new Vertex{ point };
 
-	Face* oldTriangle = findFace(*vertex);
-	HalfEdge* ab = oldTriangle->getEdge();
+	HalfEdge* ab = face->getEdge();
 	HalfEdge* next = ab->getNext();
 	HalfEdge* prev = ab->getPrev();
 
@@ -214,7 +244,7 @@ void Canvas::insertInFace(Point point) {
 	ab->assignPrevNext(xa, bx);
 	bx->assignPrevNext(ab, xa);
 	xa->assignPrevNext(bx, ab);
-	
+
 	next->assignPrevNext(xb, cx);
 	cx->assignPrevNext(next, xb);
 	xb->assignPrevNext(cx, next);
@@ -227,7 +257,7 @@ void Canvas::insertInFace(Point point) {
 	Face* abx = new Face{ ab };
 	Face* bcx = new Face{ next };
 	Face* cax = new Face{ prev };
-	
+
 	verticesVect.push_back(vertex);
 	edgesVect.insert(edgesVect.end(), { ax,xa,bx,xb,cx,xc });
 	faceVect.insert(faceVect.end(), { abx,bcx,cax });
@@ -244,7 +274,7 @@ void Canvas::insertInFace(Point point) {
 	ax->assingFace(cax);
 	xc->assingFace(cax);
 
-	deleteFace(oldTriangle);
+	deleteFace(face);
 	swapNecessary(ab);
 	swapNecessary(xc->getNext());
 	swapNecessary(cx->getPrev());				// fliEdge uvnitr swap meni strukturu trojuhelniku, next pro ab uz neni validni
@@ -287,8 +317,57 @@ void Canvas::flipEdge(HalfEdge* edgeToSwap) {
 
 void Canvas::populateCanvas() {
 	for (auto& elem : boundaryVect) {
-		insertInFace(elem);
+		insertPoint(elem, true);
 	}
+}
+
+void Canvas::insertInEdge(HalfEdge* halfedge, Point point) {
+	Vertex* vertex = new Vertex{ point };
+	HalfEdge* ac = halfedge->getNext()->getTwin();
+	HalfEdge* cd = halfedge->getTwin()->getPrev()->getTwin();
+
+	auto&& [cx, xc] = makeTwins(cd->getOrigin(), vertex);
+
+	HalfEdge* xd = new HalfEdge{ vertex };
+	HalfEdge* ax = new HalfEdge{ ac->getOrigin() };
+
+	HalfEdge* dc = new HalfEdge{ cd->getTarget() };
+	HalfEdge* ca = new HalfEdge{ cd->getOrigin() };
+
+	halfedge->getTwin()->changeorigin(vertex);
+	halfedge->getNext()->changeorigin(vertex);
+
+	ca->assignTwin(ac);
+	ac->assignTwin(ca);
+
+	cd->assignTwin(dc);
+	dc->assignTwin(cd);
+
+	ax->assignTwin(halfedge->getNext());
+	halfedge->getNext()->assignTwin(ax);
+
+	xd->assignTwin(halfedge->getTwin()->getPrev());
+	halfedge->getTwin()->getPrev()->assignTwin(xd);
+
+	ax->assignPrevNext(ca, xc);
+	xc->assignPrevNext(ax, ca);
+	ca->assignPrevNext(xc, ax);
+
+	cx->assignPrevNext(dc, xd);
+	xd->assignPrevNext(cx, dc);
+	dc->assignPrevNext(xd, cx);
+
+	Face* axc = new Face{ ax };
+	Face* cxd = new Face{ cx };
+
+	verticesVect.push_back(vertex);
+	edgesVect.insert(edgesVect.end(), { cx,xc,xd,ax,dc,ca });
+	faceVect.insert(faceVect.end(), { axc,cxd });
+
+	swapNecessary(ax->getTwin()->getNext());
+	swapNecessary(ax->getPrev());
+	swapNecessary(xd->getTwin()->getPrev());
+	swapNecessary(xd->getNext());
 }
 
 void Canvas::printFacesByEdges() {
@@ -389,7 +468,7 @@ bool Canvas::areNeighbours(Point first, Point second)
 	else return (*std::next(firstIt) == second);
 }
 
-void Canvas::removeEnclosingTrinagle(std::tuple<Vertex*,Vertex*,Vertex*> triangleVertices) {
+void Canvas::removeEnclosingTrinagle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices) {
 	const auto& [a, b, c] = triangleVertices;
 	removeTriangleVertex(a);
 	removeTriangleVertex(c);
@@ -423,7 +502,7 @@ void Canvas::removeAdditionalEdges() {
 	startingVertex = currentEdge->getOrigin();
 	currentVertex = currentEdge->getTarget();
 
-	
+
 	while (currentVertex != startingVertex) {
 		currentVertex->assignEdge(currentEdge->getTwin());
 
