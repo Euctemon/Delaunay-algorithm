@@ -3,6 +3,7 @@
 #include<vector>
 #include<algorithm>
 #include<iostream>
+#include<optional>
 
 #include "TrigComputations.h"
 
@@ -78,4 +79,35 @@ std::tuple<Point, Point, Point> boundingTrianglePoints(std::vector<Point>& bound
 	}
 
 	return std::make_tuple(a, b, c);
+}
+
+std::vector<Point> makeStructuredPoints(std::vector<Point>& boundaryPoints, float spacing) {
+	std::vector<Point> vec{};
+	const auto& [xMinIter, xMaxIter] = std::minmax_element(boundaryPoints.begin(), boundaryPoints.end(), [](Point const& a, Point const& b) {return a.x < b.x; });
+	const auto& [yMinIter, yMaxIter] = std::minmax_element(boundaryPoints.begin(), boundaryPoints.end(), [](Point const& a, Point const& b) {return a.y < b.y; });
+
+	int numXpoints = int((xMaxIter->x - xMinIter->x) / spacing) + 1;
+	int numYpoints = int((yMaxIter->y - yMinIter->y) / spacing);
+
+	for (int i = 0; i < numXpoints; i++) {
+		for (int j = 0; j < numYpoints; j++) {
+			if (j % 2 == 0) vec.push_back({ xMinIter->x + i * spacing, yMinIter->y + j * spacing });
+			else vec.push_back({ xMinIter->x + i * spacing - spacing/2, yMinIter->y + j * spacing });
+		}
+	}
+	return vec;
+}
+
+std::optional<std::vector<Point>> makeBoundaryPoints(Point a, Point b, float spacing)
+{
+	std::vector<Point> points{};
+	float euclid = pow(pow((a.x - b.x), 2.0) + pow((a.y - b.y), 2.0), 0.5);
+	float abVectX = b.x - a.x;
+	float abVectY = b.y - a.y;
+	int ratio = int(euclid / spacing);
+
+	for (int i = 1; i< ratio; i++) {
+		points.push_back({ a.x + i * (abVectX / ratio), a.y + i * (abVectY / ratio) });
+	}
+	return points;
 }

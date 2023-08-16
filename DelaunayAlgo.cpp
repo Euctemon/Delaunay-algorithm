@@ -3,6 +3,7 @@
 #include<algorithm>
 #include<variant>
 #include<optional>
+#include<fstream>
 
 #include "TrigComputations.h"
 #include "DelaunayAlgo.h"
@@ -24,6 +25,16 @@ Point Vertex::asPoint() { return Point{ x,y }; }
 void Vertex::printCoords() { std::cout << x << '\t' << y << '\n'; }
 
 void Vertex::assignEdge(HalfEdge* halfedge) { incident = halfedge; }
+
+double Vertex::getX()
+{
+	return x;
+}
+
+double Vertex::getY()
+{
+	return y;
+}
 
 HalfEdge* Vertex::getLeftmostEdge() {
 	HalfEdge* currentEdge = incident;
@@ -104,7 +115,8 @@ void Canvas::insertPoint(Point point, bool includeEdges) {
 	HalfEdge* halfedge{ nullptr };
 
 	auto f = [this, point](Face* face) {insertInFace(face, point); };
-	auto g = [this, point, includeEdges](HalfEdge* halfedge) {if (includeEdges) insertInEdge(halfedge, point); };
+	auto g = [this, point, includeEdges](HalfEdge* halfedge) {insertInEdge(halfedge, point); };
+	// if (! (halfedge->isBoundary() || halfedge->getTwin()->isBoundary()))
 
 	for (auto elem : faceVect) {
 		if (auto foo = elem->contains(point)) {
@@ -150,9 +162,10 @@ std::tuple<Vertex*, Vertex*, Vertex*> Canvas::pointsToVertices(std::tuple<Point,
 Canvas::Canvas(std::vector<Point> boundary) {
 	boundaryVect = boundary;
 	std::tuple<Vertex*, Vertex*, Vertex*> trianglePoints = pointsToVertices(boundingTrianglePoints(boundary));
+	//refineBoundary(0.3);
 	makeEnclosingTriangle(trianglePoints);
 	populateCanvas();
-	removeEnclosingTrinagle(trianglePoints);
+	removeEnclosingTriangle(trianglePoints);
 	//removeAdditionalEdges();
 }
 
@@ -280,6 +293,15 @@ void Canvas::insertInFace(Face* face, Point point) {
 	swapNecessary(cx->getPrev());				// fliEdge uvnitr swap meni strukturu trojuhelniku, next pro ab uz neni validni
 }
 
+
+
+
+
+
+
+
+
+
 void Canvas::deleteFace(Face* face) {
 	auto faceIt = std::find(faceVect.begin(), faceVect.end(), face);
 	delete* faceIt;
@@ -322,6 +344,11 @@ void Canvas::populateCanvas() {
 }
 
 void Canvas::insertInEdge(HalfEdge* halfedge, Point point) {
+	if (halfedge->isBoundary() || halfedge->getTwin()->isBoundary()) insertInBoundaryEdge(halfedge, point);
+	else insertInInnerEdge(halfedge, point);
+}
+
+void Canvas::insertInInnerEdge(HalfEdge* halfedge, Point point) {
 	Vertex* vertex = new Vertex{ point };
 	HalfEdge* ac = halfedge->getNext()->getTwin();
 	HalfEdge* cd = halfedge->getTwin()->getPrev()->getTwin();
@@ -369,6 +396,50 @@ void Canvas::insertInEdge(HalfEdge* halfedge, Point point) {
 	swapNecessary(xd->getTwin()->getPrev());
 	swapNecessary(xd->getNext());
 }
+
+void Canvas::insertInBoundaryEdge(HalfEdge* halfedge, Point point) {
+	Vertex* vertex = new Vertex{ point };
+	
+	HalfEdge* innerEdge = (halfedge->isBoundary() ? halfedge->getTwin() : halfedge);
+	HalfEdge* ba = innerEdge->getNext()->getTwin();
+	HalfEdge* cb = innerEdge->getPrev()->getTwin();
+
+	auto&& [cx, xc] = makeTwins(cb->getOrigin(), vertex);
+	
+	innerEdge->changeorigin(vertex);
+
+	HalfEdge* xb = new HalfEdge{ vertex };
+	HalfEdge* bc = new HalfEdge{ ba->getOrigin() };
+
+	xb->assignTwin(innerEdge->getPrev());
+	innerEdge->getPrev()->assignTwin(xb);
+
+	bc->assignTwin(cb);
+	cb->assignTwin(bc);
+
+	xb->assignPrevNext(cx, bc);
+	bc->assignPrevNext(xb, cx);
+	cx->assignPrevNext(cb, xb);
+
+	xc->assignPrevNext(nullptr, nullptr);
+
+	Face* xbc = new Face{ xb };
+
+	verticesVect.push_back(vertex);
+	edgesVect.insert(edgesVect.end(), { cx,xc,xb,cb });
+	faceVect.insert(faceVect.end(), { xbc });
+
+	swapNecessary(ba->getTwin());
+	swapNecessary(cb->getTwin());
+}
+
+
+
+
+
+
+
+
 
 void Canvas::printFacesByEdges() {
 	for (auto& elem : edgesVect) {
@@ -468,7 +539,7 @@ bool Canvas::areNeighbours(Point first, Point second)
 	else return (*std::next(firstIt) == second);
 }
 
-void Canvas::removeEnclosingTrinagle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices) {
+void Canvas::removeEnclosingTriangle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices) {
 	const auto& [a, b, c] = triangleVertices;
 	removeTriangleVertex(a);
 	removeTriangleVertex(c);
@@ -520,4 +591,41 @@ void Canvas::removeAdditionalEdges() {
 		currentVertex = currentVertex->getLeftmostEdge()->getTarget();
 	}
 	currentVertex->assignEdge(currentEdge->getTwin());
+}
+
+void Canvas::createMesh()
+{
+	for (auto& point : makeStructuredPoints(boundaryVect, 0.25)) {
+		insertPoint(point, true);
+	}
+}
+
+void Canvas::writeMeshCVS()
+{
+	std::ofstream file;
+	file.open("example.csv");
+	for (auto& elem : edgesVect) {
+		file << elem->getOrigin()->getX() << ' ' << elem->getOrigin()->getY() << ' ' << elem->getTarget()->getX() << ' ' << elem->getTarget()->getY() << std::endl;
+	}
+	file.close();
+
+	file.open("example2.csv");
+	for (auto& elem : verticesVect) {
+		file << elem->getX() << ' ' << elem->getY() << std::endl;
+	}
+	file.close();
+}
+
+
+void Canvas::refineBoundary(float spacing) {
+	std::vector<Point> newBoundaryVect{};
+	Point b;
+
+	for (auto pointIt = boundaryVect.begin(); pointIt != boundaryVect.end(); pointIt++) {
+		newBoundaryVect.push_back(*pointIt);
+		std::next(pointIt) != boundaryVect.end() ? b = *std::next(pointIt) : b = boundaryVect.front();
+		auto x = makeBoundaryPoints(*pointIt, b, spacing);
+		if (x.has_value()) newBoundaryVect.insert(newBoundaryVect.end(), x.value().begin(), x.value().end());
+	}
+	boundaryVect = newBoundaryVect;
 }

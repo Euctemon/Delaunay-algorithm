@@ -25,6 +25,11 @@ public:
 	void printCoords();
 
 	void assignEdge(HalfEdge* halfedge);
+
+	// zbavit se tohoto
+	double getX();
+
+	double getY();
 };
 
 class HalfEdge {
@@ -97,6 +102,10 @@ public:
 	void insertInFace(Face* face, Point point);
 	void insertInEdge(HalfEdge* halfedge, Point point);
 
+	void insertInInnerEdge(HalfEdge* halfedge, Point point);
+	void insertInBoundaryEdge(HalfEdge* halfedge, Point point);
+
+
 	void deleteFace(Face* face);
 	void deleteEdge(HalfEdge* halfedge);
 	void deleteVertex(Vertex* vertex);
@@ -107,11 +116,17 @@ public:
 	void populateCanvas();
 
 	void removeTriangleVertex(Vertex* vertex);
-	void removeEnclosingTrinagle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices);
+	void removeEnclosingTriangle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices);
 
 	bool areNeighbours(Point first, Point second);
 
 	HalfEdge* findStartingEdge();
 
 	void removeAdditionalEdges();
+
+	void createMesh();
+
+	void writeMeshCVS();
+
+	void refineBoundary(float spacing);
 };
