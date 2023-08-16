@@ -54,6 +54,19 @@ bool inCircle(Point a, Point b, Point c, Point d) {
 	else return inCircSegment(a, b, c, d);
 }
 
+Point getCircumcenter(Point a, Point b, Point c)
+{
+	double aMag = a.x * a.x + a.y * a.y;
+	double bMag = b.x * b.x + b.y * b.y;
+	double cMag = c.x * c.x + c.y * c.y;
+
+	double sX = aMag * (b.y - c.y) + bMag * (c.y - a.y) + cMag * (a.y - b.y);
+	double sY = aMag * (c.x - b.x) + bMag * (a.x - c.x) + cMag * (b.x - a.x);
+	double scale = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
+
+	return Point{ sX / scale,sY / scale };
+}
+
 std::tuple<Point, Point, Point> boundingTrianglePoints(std::vector<Point>& boundaryPoints) {
 	Point a{};
 	Point b{};

@@ -19,6 +19,8 @@ pointPos inTriangle(Point a, Point b, Point c, Point d);
 
 bool inCircle(Point a, Point b, Point c, Point d);
 
+Point getCircumcenter(Point a, Point b, Point c);
+
 std::tuple<Point, Point, Point> boundingTrianglePoints(std::vector<Point>& boundaryPoints);
 
 std::vector<Point> makeStructuredPoints(std::vector<Point>& boundaryPoints, float spacing);
