@@ -9,7 +9,12 @@ struct Point {
 	double y;
 
 	bool operator==(const Point& other) const = default;
+
+	Point operator-(const Point& other);
+
 };
+
+double dot(Point a, Point b);
 
 int orientedTriangle(Point a, Point b, Point c);
 
@@ -19,10 +24,14 @@ pointPos inTriangle(Point a, Point b, Point c, Point d);
 
 bool inCircle(Point a, Point b, Point c, Point d);
 
+bool hasBadAngle(Point a, Point b, Point c);
+
+bool hasBadArea(Point a, Point b, Point c);
+
+bool isNearHalfEdge(Point origin, Point target, Point a);
+
 Point getCircumcenter(Point a, Point b, Point c);
 
+Point getMidpoint(Point a, Point b);
+
 std::tuple<Point, Point, Point> boundingTrianglePoints(std::vector<Point>& boundaryPoints);
-
-std::vector<Point> makeStructuredPoints(std::vector<Point>& boundaryPoints, float spacing);
-
-std::optional<std::vector<Point>> makeBoundaryPoints(Point a, Point b, float spacing);

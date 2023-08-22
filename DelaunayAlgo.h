@@ -58,6 +58,8 @@ public:
 	void assignPrevNext(HalfEdge* prev, HalfEdge* next);
 	void assignTwin(HalfEdge* twin);
 	void assingFace(Face* triangle);
+
+	bool shouldSplit();
 };
 
 
@@ -75,6 +77,8 @@ public:
 	HalfEdge* findEdgeToInsert(Point point);
 
 	void printVertices();
+
+	bool isVertex(Vertex vertex);
 
 	std::optional<std::variant<Face*, HalfEdge*>> contains(Point point);
 };
@@ -96,9 +100,8 @@ public:
 	void swapNecessary(HalfEdge* swapEdge);
 
 	void printFaces();
-	void printFacesByEdges();
 
-	void insertPoint(Point point, bool includeEdges);
+	void insertPoint(Point point);
 	void insertInFace(Face* face, Point point);
 	void insertInEdge(HalfEdge* halfedge, Point point);
 
@@ -124,9 +127,19 @@ public:
 
 	void removeAdditionalEdges();
 
-	void createMesh();
+	std::vector<HalfEdge*> getEdges();
 
-	void writeMeshCVS();
+	std::vector<std::tuple<Vertex*, Vertex*>> getBadSides();
 
-	void refineBoundary(float spacing);
+	bool sameVertices(HalfEdge* halfedge, std::tuple<Vertex*, Vertex*> vertices);
+
+	std::optional<Face*> getBadTriangle();
+
+	std::optional<std::vector<HalfEdge*>> getEncroachedEdges(Point circumcenter);
+
+	void splitSide(Vertex* origin, Vertex* target);
+
+	HalfEdge* findHalfEdge(Vertex* origin, Point midpoint);
+
+	void Ruppert();
 };
