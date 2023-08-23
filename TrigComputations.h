@@ -14,13 +14,9 @@ struct Point {
 
 };
 
-double dot(Point a, Point b);
-
-int orientedTriangle(Point a, Point b, Point c);
+pointPos inTriangle(Point a, Point b, Point c, Point d);
 
 bool inCircSegment(Point a, Point b, Point c, Point d);
-
-pointPos inTriangle(Point a, Point b, Point c, Point d);
 
 bool inCircle(Point a, Point b, Point c, Point d);
 
@@ -29,6 +25,10 @@ bool hasBadAngle(Point a, Point b, Point c);
 bool hasBadArea(Point a, Point b, Point c);
 
 bool isNearHalfEdge(Point origin, Point target, Point a);
+
+int orientedTriangle(Point a, Point b, Point c);
+
+double dot(Point a, Point b);
 
 Point getCircumcenter(Point a, Point b, Point c);
 

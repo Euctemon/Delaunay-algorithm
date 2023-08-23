@@ -11,7 +11,7 @@ class HalfEdge;
 class Vertex {					// any HalfEdge coming from that vertex
 	double x;
 	double y;
-	HalfEdge* incident;
+	HalfEdge* Incident;
 
 public:
 	Vertex(Point& point);
@@ -22,14 +22,7 @@ public:
 
 	HalfEdge* getLeftmostEdge();
 
-	void printCoords();
-
 	void assignEdge(HalfEdge* halfedge);
-
-	// zbavit se tohoto
-	double getX();
-
-	double getY();
 };
 
 class HalfEdge {
@@ -48,23 +41,21 @@ public:
 	HalfEdge* getNext();
 	HalfEdge* getPrev();
 	HalfEdge* getTwin();
+
 	Face* getFace();
 
 	bool isBoundary();
+	bool shouldSplit();
 
-	void printOrigin();
 	void changeorigin(Vertex* vertex);
-
 	void assignPrevNext(HalfEdge* prev, HalfEdge* next);
 	void assignTwin(HalfEdge* twin);
 	void assingFace(Face* triangle);
 
-	bool shouldSplit();
 };
 
-
 class Face {					// any halfedge to the left of the face
-	HalfEdge* boundary;
+	HalfEdge* Boundary;
 
 public:
 
@@ -72,74 +63,64 @@ public:
 
 	HalfEdge* getEdge();
 
-	std::tuple<Vertex, Vertex, Vertex> getVertices();
-
 	HalfEdge* findEdgeToInsert(Point point);
 
-	void printVertices();
-
-	bool isVertex(Vertex vertex);
-
+	std::tuple<Vertex, Vertex, Vertex> getVertices();
+	
 	std::optional<std::variant<Face*, HalfEdge*>> contains(Point point);
 };
 
 class Canvas {
 	std::vector<Point> boundaryVect;
-	std::vector< Vertex*> verticesVect;
-	std::vector< HalfEdge*> edgesVect;
-	std::vector< Face*> faceVect;
+	std::vector< Vertex*> vertexVect;
+	std::vector< HalfEdge*> edgeVect;
+	std::vector< Face*> triangleVect;
 
-public:
-	Canvas(std::vector<Point> boundary);
-
-	std::tuple<Vertex*, Vertex*, Vertex*> pointsToVertices(std::tuple<Point, Point, Point> trianglePoints);
-
-	std::tuple<HalfEdge*, HalfEdge*> makeTwins(Vertex* left, Vertex* right);
-
-	void makeEnclosingTriangle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices);
-	void swapNecessary(HalfEdge* swapEdge);
-
-	void printFaces();
-
-	void insertPoint(Point point);
-	void insertInFace(Face* face, Point point);
-	void insertInEdge(HalfEdge* halfedge, Point point);
-
-	void insertInInnerEdge(HalfEdge* halfedge, Point point);
-	void insertInBoundaryEdge(HalfEdge* halfedge, Point point);
-
-
+	// odstraòování
 	void deleteFace(Face* face);
 	void deleteEdge(HalfEdge* halfedge);
 	void deleteVertex(Vertex* vertex);
 
-	void flipEdge(HalfEdge* edgeToSwap);
-	void reconnectVertex(Vertex* vertex);
+	// vkládání
+	void insertInFace(Face* face, Point point);
+	void insertInEdge(HalfEdge* halfedge, Point point);
+	void insertInInnerEdge(HalfEdge* halfedge, Point point);
+	void insertInBoundaryEdge(HalfEdge* halfedge, Point point);
 
+	// tvorba CDT
+	std::tuple<Vertex*, Vertex*, Vertex*> pointsToVertices(std::tuple<Point, Point, Point> trianglePoints);
+
+	void makeEnclosingTriangle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices);
 	void populateCanvas();
-
-	void removeTriangleVertex(Vertex* vertex);
 	void removeEnclosingTriangle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices);
+	void removeAdditionalEdges();
+	
+	// pomocné funkce
+	void flipEdge(HalfEdge* edgeToSwap);
+	void swapNecessary(HalfEdge* swapEdge);
+	void reconnectVertex(Vertex* vertex);
+	void removeTriangleVertex(Vertex* vertex);
+	void splitSide(Vertex* origin, Vertex* target);
 
 	bool areNeighbours(Point first, Point second);
-
-	HalfEdge* findStartingEdge();
-
-	void removeAdditionalEdges();
-
-	std::vector<HalfEdge*> getEdges();
-
-	std::vector<std::tuple<Vertex*, Vertex*>> getBadSides();
-
 	bool sameVertices(HalfEdge* halfedge, std::tuple<Vertex*, Vertex*> vertices);
 
+	HalfEdge* findStartingEdge();
+	HalfEdge* findHalfEdge(Vertex* origin, Point midpoint);
+
+	std::tuple<HalfEdge*, HalfEdge*> makeTwins(Vertex* left, Vertex* right);
+
+	std::vector<std::tuple<Vertex*, Vertex*>> getBadSides();
+	
 	std::optional<Face*> getBadTriangle();
 
 	std::optional<std::vector<HalfEdge*>> getEncroachedEdges(Point circumcenter);
 
-	void splitSide(Vertex* origin, Vertex* target);
+public:
+	Canvas(std::vector<Point> boundary);
 
-	HalfEdge* findHalfEdge(Vertex* origin, Point midpoint);
+	std::vector<HalfEdge*> getEdges();
 
+	void insertPoint(Point point);
 	void Ruppert();
 };
