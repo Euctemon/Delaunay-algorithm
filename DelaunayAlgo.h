@@ -20,8 +20,6 @@ public:
 
 	HalfEdge* getEdge();
 
-	HalfEdge* getLeftmostEdge();
-
 	void assignEdge(HalfEdge* halfedge);
 };
 
@@ -45,12 +43,13 @@ public:
 	Face* getFace();
 
 	bool isBoundary();
-	bool shouldSplit();
 
-	void changeorigin(Vertex* vertex);
-	void assignPrevNext(HalfEdge* prev, HalfEdge* next);
+	friend void connectTriangle(HalfEdge* first, HalfEdge* second, HalfEdge* third);
+	friend void connectTwins(HalfEdge* first, HalfEdge* second);
+
+	void changeOrigin(Vertex* vertex);
 	void assignTwin(HalfEdge* twin);
-	void assingFace(Face* triangle);
+	void assingTriangle(Face* triangle);
 
 };
 
@@ -63,64 +62,61 @@ public:
 
 	HalfEdge* getEdge();
 
-	HalfEdge* findEdgeToInsert(Point point);
+	HalfEdge* edgeContainingPoint(Point point);
 
-	std::tuple<Vertex, Vertex, Vertex> getVertices();
+	std::tuple<Point, Point, Point> getVertices();
+
+	std::tuple<HalfEdge*, HalfEdge*, HalfEdge*> getEdges();
+
+	bool containsAtleastOne(std::tuple<Point, Point, Point> boudingPoints);
 	
 	std::optional<std::variant<Face*, HalfEdge*>> contains(Point point);
 };
 
 class Canvas {
-	std::vector<Point> boundaryVect;
+	std::vector<Point> inputPoints;
 	std::vector< Vertex*> vertexVect;
 	std::vector< HalfEdge*> edgeVect;
 	std::vector< Face*> triangleVect;
 
-	// odstraòování
-	void deleteFace(Face* face);
-	void deleteEdge(HalfEdge* halfedge);
-	void deleteVertex(Vertex* vertex);
+	// vkládání bodù
+	struct InsertStruct {
+		Canvas& parent;
+		Point point{};
+		
+		InsertStruct(Canvas& canvas) : parent(canvas) {};
 
-	// vkládání
-	void insertInFace(Face* face, Point point);
-	void insertInEdge(HalfEdge* halfedge, Point point);
-	void insertInInnerEdge(HalfEdge* halfedge, Point point);
-	void insertInBoundaryEdge(HalfEdge* halfedge, Point point);
+		void operator() (Face* triangle) { parent.insertInFace(triangle, point); };
+		void operator() (HalfEdge* halfedge) { halfedge->isBoundary() ? parent.insertInBoundaryEdge(halfedge, point) : parent.insertInInnerEdge(halfedge, point); };
+	} insertFunctor;
+
+	void insertInFace(Face* face, Point& point);
+	void insertInInnerEdge(HalfEdge* halfedge, Point& point);
+	void insertInBoundaryEdge(HalfEdge* halfedge, Point& point);
+
+	// odstraòování
+	void eraseEdge(HalfEdge* halfedge);
+	bool cleanTriangle(Face* triangle, std::tuple<Point, Point, Point> boundingPoints);
+	bool cleanVertex(Vertex* vertex, std::tuple<Point, Point, Point> boundingPoints);
 
 	// tvorba CDT
-	std::tuple<Vertex*, Vertex*, Vertex*> pointsToVertices(std::tuple<Point, Point, Point> trianglePoints);
-
-	void makeEnclosingTriangle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices);
+	void makeEnclosingTriangle(std::tuple<Point, Point, Point> boundingPoints);
 	void populateCanvas();
-	void removeEnclosingTriangle(std::tuple<Vertex*, Vertex*, Vertex*> triangleVertices);
-	void removeAdditionalEdges();
+	void removeEnclosingTriangle(std::tuple<Point, Point, Point> boundingPoints);
+	//void removeAdditionalEdges();
 	
 	// pomocné funkce
 	void flipEdge(HalfEdge* edgeToSwap);
 	void swapNecessary(HalfEdge* swapEdge);
-	void reconnectVertex(Vertex* vertex);
-	void removeTriangleVertex(Vertex* vertex);
-	void splitSide(Vertex* origin, Vertex* target);
+	//void reconnectVertex(Vertex* vertex);
+	//void removeTriangleVertex(Vertex* vertex);
 
-	bool areNeighbours(Point first, Point second);
-	bool sameVertices(HalfEdge* halfedge, std::tuple<Vertex*, Vertex*> vertices);
+	//HalfEdge* findStartingEdge();
+	//HalfEdge* findHalfEdge(Vertex* origin, Point midpoint);
 
-	HalfEdge* findStartingEdge();
-	HalfEdge* findHalfEdge(Vertex* origin, Point midpoint);
-
-	std::tuple<HalfEdge*, HalfEdge*> makeTwins(Vertex* left, Vertex* right);
-
-	std::vector<std::tuple<Vertex*, Vertex*>> getBadSides();
-	
-	std::optional<Face*> getBadTriangle();
-
-	std::optional<std::vector<HalfEdge*>> getEncroachedEdges(Point circumcenter);
 
 public:
 	Canvas(std::vector<Point> boundary);
-
-	std::vector<HalfEdge*> getEdges();
-
+	void printByEdges();
 	void insertPoint(Point point);
-	void Ruppert();
 };

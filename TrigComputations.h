@@ -2,7 +2,7 @@
 
 #include<vector>
 
-enum pointPos { INSIDE, OUTSIDE, BOUNDARY };
+enum class pointPos { INSIDE, OUTSIDE, BOUNDARY };
 
 struct Point {
 	double x;
@@ -20,18 +20,8 @@ bool inCircSegment(Point a, Point b, Point c, Point d);
 
 bool inCircle(Point a, Point b, Point c, Point d);
 
-bool hasBadAngle(Point a, Point b, Point c);
-
-bool hasBadArea(Point a, Point b, Point c);
-
-bool isNearHalfEdge(Point origin, Point target, Point a);
-
 int orientedTriangle(Point a, Point b, Point c);
 
 double dot(Point a, Point b);
 
-Point getCircumcenter(Point a, Point b, Point c);
-
-Point getMidpoint(Point a, Point b);
-
-std::tuple<Point, Point, Point> boundingTrianglePoints(std::vector<Point>& boundaryPoints);
+std::tuple<Point, Point, Point> getBoundingPoints(std::vector<Point>& boundaryPoints);

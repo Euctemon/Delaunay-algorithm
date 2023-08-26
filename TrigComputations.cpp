@@ -17,11 +17,11 @@ pointPos inTriangle(Point a, Point b, Point c, Point d) {
 
 	switch (sum) {
 	case 2:
-		return BOUNDARY;		// on triangle's edge
+		return pointPos::BOUNDARY;		// on triangle's edge
 	case 3:
-		return INSIDE;		// in triangle
+		return pointPos::INSIDE;		// in triangle
 	default:
-		return OUTSIDE;		// outside triangle
+		return pointPos::OUTSIDE;		// outside triangle
 	}
 }
 
@@ -38,43 +38,12 @@ bool inCircSegment(Point a, Point b, Point c, Point d) {
 	else return false;
 }
 
-bool inCircle(Point a, Point b, Point c, Point d) {
-	int sum = orientedTriangle(a, b, d) + orientedTriangle(b, c, d) + orientedTriangle(c, a, d);
+bool inCircle(Point a, Point b, Point c, Point point) {
+	int sum = orientedTriangle(a, b, point) + orientedTriangle(b, c, point) + orientedTriangle(c, a, point);
 
 	if (sum < 1) return false;
 	else if (sum > 1) return true;
-	else return inCircSegment(a, b, c, d);
-}
-
-bool hasBadAngle(Point a, Point b, Point c) {
-	Point circumcenter = getCircumcenter(a, b, c);
-	Point circumradius = a - circumcenter;
-	Point vec_ab = b - a;
-	Point vec_bc = c - b;
-	Point vec_ca = a - c;
-	
-	auto smallestSide = std::min({ vec_ab,vec_bc,vec_ca }, [](Point a, Point b) {return (dot(a,a)< dot(b,b)); });
-	float ratio = dot(circumradius, circumradius) / dot(smallestSide, smallestSide);
-
-	return (ratio < 2.0 ? false : true);
-}
-
-bool hasBadArea(Point a, Point b, Point c)
-{
-	Point vec_ba = a - b;
-	Point vec_ca = a - c;
-	double maxArea = 0.2;
-	double area = abs(vec_ba.x * vec_ca.y - vec_ba.y * vec_ca.x)/2.0;
-
-	return (area > maxArea);
-}
-
-bool isNearHalfEdge(Point origin, Point target, Point a) {
-	Point halfedgeMid{ (origin.x + target.x) / 2.0,(origin.y + target.y) / 2.0 };
-	bool isNear = dot(origin - halfedgeMid, origin - halfedgeMid) >= dot(a - halfedgeMid, a - halfedgeMid);
-	bool isAntiClockwise = (orientedTriangle(origin, target, a) > -1);
-
-	return (isNear && isAntiClockwise);
+	else return inCircSegment(a, b, c, point);
 }
 
 int orientedTriangle(Point a, Point b, Point c) {
@@ -91,44 +60,18 @@ double dot(Point a, Point b) {
 	return (a.x * b.x + a.y * b.y);
 }
 
-Point getCircumcenter(Point a, Point b, Point c) {
-	double sX = dot(a,a) * (b.y - c.y) + dot(b,b) * (c.y - a.y) + dot(c,c) * (a.y - b.y);
-	double sY = dot(a,a) * (c.x - b.x) + dot(b,b) * (a.x - c.x) + dot(c,c) * (b.x - a.x);
-	double scale = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
+std::tuple<Point, Point, Point> getBoundingPoints(std::vector<Point>& points) {
+	auto&& [xMin, xMax] = std::minmax_element(points.begin(), points.end(), [](Point const& a, Point const& b) {return a.x < b.x; });
+	auto&& [yMin, yMax] = std::minmax_element(points.begin(), points.end(), [](Point const& a, Point const& b) {return a.y < b.y; });
 
-	return Point{ sX / scale,sY / scale };
-}
-
-Point getMidpoint(Point a, Point b) {
-	double xMid = (a.x + b.x) / 2.0;
-	double yMid = (a.y + b.y) / 2.0;
+	Point center{ (xMin->x + xMax->x) / 2.0, (yMin->y + yMax->y) / 2.0 };
 	
-	return Point(xMid,yMid);
-}
+	double xDiff = abs(xMax->x - center.x) + 1;
+	double yDiff = abs(yMax->y - center.y) + 1;
 
-std::tuple<Point, Point, Point> boundingTrianglePoints(std::vector<Point>& boundaryPoints) {
-	Point a{};
-	Point b{};
-	Point c{};
-
-	auto&& [xMinIter, xMaxIter] = std::minmax_element(boundaryPoints.begin(), boundaryPoints.end(), [](Point const& a, Point const& b) {return a.x < b.x; });
-	auto&& [yMinIter, yMaxIter] = std::minmax_element(boundaryPoints.begin(), boundaryPoints.end(), [](Point const& a, Point const& b) {return a.y < b.y; });
-
-	double xMin = xMinIter->x - 1.0;
-	double xMax = xMaxIter->x + 1.0;
-	double yMin = yMinIter->y - 1.0;
-	double yMax = yMaxIter->y + 1.0;
-
-	if (xMax - xMin > yMax - yMin) {
-		a = { xMin, 2.0 * yMin - yMax };
-		b = { 2.0 * xMax, 0.5 * (yMax + yMin) };
-		c = { xMin, 2.0 * yMax - yMin };
-	}
-	else {
-		a = { 2.0 * xMin - xMax,yMin };
-		b = { 2.0 * xMax - xMin,yMin };
-		c = { 0.5 * (xMax + xMin),2.0 * yMax };
-	}
+	Point a{ center.x,center.y + 2 * yDiff };
+	Point b{ center.x - 2 * xDiff,center.y - 2 * yDiff };
+	Point c{ center.x + 2 * xDiff,center.y - 2 * yDiff };
 
 	return std::make_tuple(a, b, c);
 }
