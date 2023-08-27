@@ -1,2 +1,2 @@
 # Delaunay
-This is a project which implements the Delaunay algorithm for creating a 2D mesh.
+This is a project which implements an algorithm for Delaunay triangulation.
